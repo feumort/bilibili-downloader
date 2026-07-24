@@ -1,0 +1,10 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.BilibiliDownloader" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">#FB7299</item>
+        <item name="colorPrimaryVariant">#E5638E</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorSecondary">#00A1D6</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        <item name="android:statusBarColor" tools:targetApi="l">#FB7299</item>
+    </style>
+</resources>
