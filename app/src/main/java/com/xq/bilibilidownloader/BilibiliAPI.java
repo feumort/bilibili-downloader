@@ -164,10 +164,11 @@ public class BilibiliAPI {
 
     public PlayUrlInfo getPlayUrl(String bvid, long cid, int qn, String sessdata) throws Exception {
         String url = "https://api.bilibili.com/x/player/playurl?bvid=" + bvid
-                + "&cid=" + cid + "&qn=" + qn + "&fnval=4048&fourk=1&platform=html5";
+                + "&cid=" + cid + "&qn=" + qn + "&fnval=4048&fourk=1";
         Request.Builder rb = new Request.Builder().url(url)
                 .header("User-Agent", UA)
-                .header("Referer", REFERER);
+                .header("Referer", REFERER)
+                .header("Origin", "https://www.bilibili.com");
         if (sessdata != null && !sessdata.isEmpty()) {
             String decoded = sessdata;
             try {
