@@ -26,6 +26,8 @@ public class DownloadTask {
     private final String qualityLabel;
     private final String sessdata;
     private final File outputDir;
+    private final long specifyCid;
+    private final String specifyPart;
 
     private VideoInfo videoInfo;
     private Status status = Status.PENDING;
@@ -44,10 +46,16 @@ public class DownloadTask {
     private long lastUpdateTime = 0;
 
     public DownloadTask(String url, String qualityLabel, String sessdata, File outputDir) {
+        this(url, qualityLabel, sessdata, outputDir, 0, null);
+    }
+
+    public DownloadTask(String url, String qualityLabel, String sessdata, File outputDir, long cid, String part) {
         this.url = url;
         this.qualityLabel = qualityLabel;
         this.sessdata = sessdata;
         this.outputDir = outputDir;
+        this.specifyCid = cid;
+        this.specifyPart = part;
 
         this.api = new BilibiliAPI();
         this.downloadClient = new OkHttpClient.Builder()
@@ -77,12 +85,20 @@ public class DownloadTask {
             }
 
             videoInfo = api.getVideoInfo(bvid, sessdata);
-            savedFilename = sanitizeFilename(videoInfo.title) + ".mp4";
+
+            long cid = specifyCid > 0 ? specifyCid : videoInfo.cid;
+            String partName = specifyPart != null ? specifyPart : videoInfo.title;
+
+            if (videoInfo.pages.size() > 1 && specifyPart != null) {
+                savedFilename = sanitizeFilename(videoInfo.title) + "_P" + findPageNumber(cid) + "_" + sanitizeFilename(partName) + ".mp4";
+            } else {
+                savedFilename = sanitizeFilename(videoInfo.title) + ".mp4";
+            }
             progress = 10;
             notifyUpdate();
 
             int qn = BilibiliAPI.getQualityId(qualityLabel);
-            BilibiliAPI.PlayUrlInfo playInfo = api.getPlayUrl(bvid, videoInfo.cid, qn, sessdata);
+            BilibiliAPI.PlayUrlInfo playInfo = api.getPlayUrl(bvid, cid, qn, sessdata);
             qualityText = BilibiliAPI.getQualityName(playInfo.quality);
             progress = 15;
             notifyUpdate();
@@ -94,8 +110,9 @@ public class DownloadTask {
             File tempDir = new File(outputDir, ".temp");
             tempDir.mkdirs();
             File outputFile = new File(outputDir, savedFilename);
-            File videoTemp = new File(tempDir, bvid + "_video.m4s");
-            File audioTemp = new File(tempDir, bvid + "_audio.m4s");
+            String tempSuffix = cid + "";
+            File videoTemp = new File(tempDir, bvid + "_" + tempSuffix + "_video.m4s");
+            File audioTemp = new File(tempDir, bvid + "_" + tempSuffix + "_audio.m4s");
 
             downloadFile(playInfo.videoUrl, videoTemp, 15, 55);
 
@@ -130,6 +147,15 @@ public class DownloadTask {
             }
             notifyUpdate();
         }
+    }
+
+    private int findPageNumber(long cid) {
+        if (videoInfo != null && videoInfo.pages != null) {
+            for (VideoInfo.Page p : videoInfo.pages) {
+                if (p.cid == cid) return p.page;
+            }
+        }
+        return 1;
     }
 
     private void downloadFile(String fileUrl, File dest, int progressStart, int progressEnd) throws Exception {
@@ -283,6 +309,9 @@ public class DownloadTask {
     public VideoInfo getVideoInfo() { return videoInfo; }
 
     public String getDisplayTitle() {
+        if (specifyPart != null && videoInfo != null && videoInfo.title != null) {
+            return videoInfo.title + " - " + specifyPart;
+        }
         if (videoInfo != null && videoInfo.title != null) {
             return videoInfo.title;
         }
