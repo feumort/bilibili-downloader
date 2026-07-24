@@ -31,6 +31,16 @@ public class DownloadManager {
         if (onUpdateCallback != null) onUpdateCallback.run();
     }
 
+    public void submitPage(String url, String quality, String sessdata, File outputDir, long cid, String part) {
+        DownloadTask task = new DownloadTask(url, quality, sessdata, outputDir, cid, part);
+        task.setOnUpdate(() -> {
+            if (onUpdateCallback != null) onUpdateCallback.run();
+        });
+        tasks.add(task);
+        executor.submit(task::execute);
+        if (onUpdateCallback != null) onUpdateCallback.run();
+    }
+
     public List<DownloadTask> getTasks() {
         return tasks;
     }
