@@ -36,6 +36,7 @@ public class MainActivity extends AppCompatActivity {
     private Button downloadBtn;
     private Button clearBtn;
     private Button cancelAllBtn;
+    private Button pauseAllBtn;
     private LinearLayout taskList;
     private TextView emptyText;
     private TextView savePathText;
@@ -57,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
         downloadBtn = findViewById(R.id.downloadBtn);
         clearBtn = findViewById(R.id.clearBtn);
         cancelAllBtn = findViewById(R.id.cancelAllBtn);
+        pauseAllBtn = findViewById(R.id.pauseAllBtn);
         taskList = findViewById(R.id.taskList);
         emptyText = findViewById(R.id.emptyText);
         savePathText = findViewById(R.id.savePathText);
@@ -95,6 +97,13 @@ public class MainActivity extends AppCompatActivity {
                     .setPositiveButton("确定", (d, w) -> downloadManager.cancelAll())
                     .setNegativeButton("不取消", null)
                     .show();
+        });
+        pauseAllBtn.setOnClickListener(v -> {
+            if (downloadManager.hasDownloadingTasks()) {
+                downloadManager.pauseAll();
+            } else {
+                downloadManager.resumeAll();
+            }
         });
 
         if (!checkPermission()) {
@@ -314,11 +323,21 @@ public class MainActivity extends AppCompatActivity {
             emptyText.setVisibility(View.VISIBLE);
             clearBtn.setVisibility(View.GONE);
             cancelAllBtn.setVisibility(View.GONE);
+            pauseAllBtn.setVisibility(View.GONE);
         } else {
             taskList.setVisibility(View.VISIBLE);
             emptyText.setVisibility(View.GONE);
             clearBtn.setVisibility(View.VISIBLE);
             cancelAllBtn.setVisibility(hasActive ? View.VISIBLE : View.GONE);
+            if (downloadManager.hasDownloadingTasks()) {
+                pauseAllBtn.setVisibility(View.VISIBLE);
+                pauseAllBtn.setText("全部暂停");
+            } else if (downloadManager.hasPausedTasks()) {
+                pauseAllBtn.setVisibility(View.VISIBLE);
+                pauseAllBtn.setText("全部继续");
+            } else {
+                pauseAllBtn.setVisibility(View.GONE);
+            }
         }
     }
 
