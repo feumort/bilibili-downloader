@@ -3,6 +3,7 @@ package com.xq.bilibilidownloader;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -15,6 +16,15 @@ import java.util.List;
 public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
 
     private List<DownloadTask> tasks = new ArrayList<>();
+    private OnCancelListener cancelListener;
+
+    public interface OnCancelListener {
+        void onCancel(DownloadTask task);
+    }
+
+    public void setOnCancelListener(OnCancelListener listener) {
+        this.cancelListener = listener;
+    }
 
     public void updateTasks(List<DownloadTask> newTasks) {
         this.tasks = newTasks;
@@ -77,6 +87,18 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
         holder.status.setText(statusText);
         holder.status.setTextColor(statusColor);
 
+        boolean canCancel = task.getStatus() == DownloadTask.Status.PENDING
+                || task.getStatus() == DownloadTask.Status.PARSING
+                || task.getStatus() == DownloadTask.Status.DOWNLOADING
+                || task.getStatus() == DownloadTask.Status.MERGING;
+        holder.btnCancel.setVisibility(canCancel ? View.VISIBLE : View.GONE);
+
+        holder.btnCancel.setOnClickListener(v -> {
+            if (cancelListener != null) {
+                cancelListener.onCancel(task);
+            }
+        });
+
         if (task.getStatus() == DownloadTask.Status.DOWNLOADING
                 || task.getStatus() == DownloadTask.Status.MERGING
                 || task.getStatus() == DownloadTask.Status.PARSING) {
@@ -116,6 +138,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
     static class ViewHolder extends RecyclerView.ViewHolder {
         TextView title, url, status, progressText, errorText, filenameText;
         ProgressBar progressBar;
+        Button btnCancel;
 
         ViewHolder(View v) {
             super(v);
@@ -126,6 +149,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
             progressBar = v.findViewById(R.id.taskProgressBar);
             errorText = v.findViewById(R.id.taskError);
             filenameText = v.findViewById(R.id.taskFilename);
+            btnCancel = v.findViewById(R.id.btnCancel);
         }
     }
 }
