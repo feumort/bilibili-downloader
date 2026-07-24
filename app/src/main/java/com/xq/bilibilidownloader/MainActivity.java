@@ -42,6 +42,8 @@ public class MainActivity extends AppCompatActivity {
 
     private DownloadManager downloadManager;
     private TaskAdapter adapter;
+    private long lastRefreshTime = 0;
+    private static final long REFRESH_INTERVAL_MS = 400;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,7 +69,7 @@ public class MainActivity extends AppCompatActivity {
         adapter.setOnCancelListener(task -> downloadManager.cancelTask(task));
 
         downloadManager = new DownloadManager();
-        downloadManager.setOnUpdate(this::refreshTaskList);
+        downloadManager.setOnUpdate(this::throttledRefresh);
 
         File saveDir = getSaveDir();
         savePathText.setText("保存位置: " + saveDir.getAbsolutePath());
@@ -239,6 +241,13 @@ public class MainActivity extends AppCompatActivity {
             scrollView.post(() -> scrollView.fullScroll(ScrollView.FOCUS_DOWN));
             dialog.dismiss();
         });
+    }
+
+    private void throttledRefresh() {
+        long now = System.currentTimeMillis();
+        if (now - lastRefreshTime < REFRESH_INTERVAL_MS) return;
+        lastRefreshTime = now;
+        refreshTaskList();
     }
 
     private void refreshTaskList() {
