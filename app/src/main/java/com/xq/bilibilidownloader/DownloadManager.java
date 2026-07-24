@@ -45,6 +45,12 @@ public class DownloadManager {
         return tasks;
     }
 
+    public void cancelTask(DownloadTask task) {
+        task.cancel();
+        tasks.remove(task);
+        if (onUpdateCallback != null) onUpdateCallback.run();
+    }
+
     public void clearCompleted() {
         tasks.removeIf(t -> t.getStatus() == DownloadTask.Status.COMPLETED
                 || t.getStatus() == DownloadTask.Status.ERROR);
