@@ -34,6 +34,51 @@ public class BilibiliAPI {
         return null;
     }
 
+    public static String extractShortUrl(String text) {
+        if (text == null) return null;
+        Pattern p = Pattern.compile("(https?://b23\\.tv/[a-zA-Z0-9]+)");
+        Matcher m = p.matcher(text);
+        if (m.find()) return m.group(1);
+        return null;
+    }
+
+    public String resolveShortUrl(String shortUrl) throws Exception {
+        Request request = new Request.Builder().url(shortUrl)
+                .header("User-Agent", UA)
+                .build();
+        try (Response response = client.newCall(request).execute()) {
+            String finalUrl = response.request().url().toString();
+            String bvid = extractBvid(finalUrl);
+            if (bvid != null) return bvid;
+            String body = response.body() != null ? response.body().string() : "";
+            bvid = extractBvid(body);
+            return bvid;
+        }
+    }
+
+    public String resolveBvid(String input) throws Exception {
+        if (input == null || input.trim().isEmpty()) return null;
+        String bvid = extractBvid(input);
+        if (bvid != null) return bvid;
+        String shortUrl = extractShortUrl(input);
+        if (shortUrl != null) {
+            return resolveShortUrl(shortUrl);
+        }
+        if (input.trim().matches("https?://.*bilibili.*")) {
+            Request request = new Request.Builder().url(input.trim())
+                    .header("User-Agent", UA)
+                    .build();
+            try (Response response = client.newCall(request).execute()) {
+                String finalUrl = response.request().url().toString();
+                bvid = extractBvid(finalUrl);
+                if (bvid != null) return bvid;
+                String body = response.body() != null ? response.body().string() : "";
+                return extractBvid(body);
+            }
+        }
+        return null;
+    }
+
     public static int getQualityId(String label) {
         if (label == null) return 64;
         if (label.startsWith("360")) return 16;
