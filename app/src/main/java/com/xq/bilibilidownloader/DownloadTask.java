@@ -188,65 +188,124 @@ public class DownloadTask {
     }
 
     private void downloadFile(String fileUrl, File dest, int progressStart, int progressEnd) throws Exception {
-        Request request = new Request.Builder()
-                .url(fileUrl)
-                .header("User-Agent", BilibiliAPI.UA)
-                .header("Referer", BilibiliAPI.REFERER)
-                .build();
+        int maxRetries = 10;
+        int retryCount = 0;
 
-        try (Response response = downloadClient.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
-                throw new Exception("下载失败: HTTP " + response.code());
+        while (retryCount <= maxRetries) {
+            long offset = dest.exists() ? dest.length() : 0;
+
+            Request.Builder rb = new Request.Builder()
+                    .url(fileUrl)
+                    .header("User-Agent", BilibiliAPI.UA)
+                    .header("Referer", BilibiliAPI.REFERER);
+
+            if (offset > 0) {
+                rb.header("Range", "bytes=" + offset + "-");
             }
 
-            long contentLength = response.body() != null ? response.body().contentLength() : -1;
-            InputStream is = response.body() != null ? response.body().byteStream() : null;
-            if (is == null) throw new Exception("下载失败: 无响应体");
-
-            FileOutputStream fos = new FileOutputStream(dest);
-            byte[] buffer = new byte[8192];
-            long totalRead = 0;
-            long startTime = System.currentTimeMillis();
-            int bytesRead;
-
-            while ((bytesRead = is.read(buffer)) != -1) {
-                if (cancelled) {
-                    fos.close();
-                    is.close();
-                    throw new Exception("已取消");
+            Response response = null;
+            try {
+                response = downloadClient.newCall(rb.build()).execute();
+                int code = response.code();
+                if (code != 200 && code != 206) {
+                    throw new Exception("下载失败: HTTP " + code);
                 }
-                while (paused && !cancelled) {
-                    try {
-                        Thread.sleep(500);
-                    } catch (InterruptedException e) {
-                        break;
+
+                long contentLength = response.body() != null ? response.body().contentLength() : -1;
+                InputStream is = response.body() != null ? response.body().byteStream() : null;
+                if (is == null) throw new Exception("下载失败: 无响应体");
+
+                FileOutputStream fos = new FileOutputStream(dest, offset > 0);
+                byte[] buffer = new byte[8192];
+                long totalRead = offset;
+                long startTime = System.currentTimeMillis();
+                int bytesRead;
+
+                while ((bytesRead = is.read(buffer)) != -1) {
+                    if (cancelled) {
+                        fos.close();
+                        is.close();
+                        throw new Exception("已取消");
+                    }
+                    while (paused && !cancelled) {
+                        try {
+                            Thread.sleep(500);
+                        } catch (InterruptedException e) {
+                            break;
+                        }
+                    }
+                    if (cancelled) {
+                        fos.close();
+                        is.close();
+                        throw new Exception("已取消");
+                    }
+                    fos.write(buffer, 0, bytesRead);
+                    totalRead += bytesRead;
+
+                    long now = System.currentTimeMillis();
+                    if (now - lastUpdateTime > 400) {
+                        lastUpdateTime = now;
+                        if (contentLength > 0) {
+                            long fullLength = contentLength + offset;
+                            progress = (int) (progressStart + (totalRead * 1.0 / fullLength) * (progressEnd - progressStart));
+                        }
+                        long elapsed = (now - startTime) / 1000;
+                        if (elapsed > 0) {
+                            speedText = formatSpeed((totalRead - offset) / elapsed);
+                        }
+                        notifyUpdate();
                     }
                 }
-                if (cancelled) {
-                    fos.close();
-                    is.close();
-                    throw new Exception("已取消");
-                }
-                fos.write(buffer, 0, bytesRead);
-                totalRead += bytesRead;
 
-                long now = System.currentTimeMillis();
-                if (now - lastUpdateTime > 400) {
-                    lastUpdateTime = now;
-                    if (contentLength > 0) {
-                        progress = (int) (progressStart + (totalRead * 1.0 / contentLength) * (progressEnd - progressStart));
+                fos.flush();
+                fos.close();
+                is.close();
+                response.close();
+
+                long expectedSize = (contentLength > 0) ? offset + contentLength : -1;
+                if (expectedSize > 0 && totalRead < expectedSize) {
+                    retryCount++;
+                    if (retryCount > maxRetries) {
+                        throw new Exception("下载多次中断，已下载 " + formatSize(totalRead));
                     }
-                    long elapsed = (now - startTime) / 1000;
-                    if (elapsed > 0) {
-                        speedText = formatSpeed(totalRead / elapsed);
+                    continue;
+                }
+
+                return;
+
+            } catch (IOException e) {
+                if (response != null) response.close();
+                if (cancelled) throw new Exception("已取消");
+
+                long currentSize = dest.exists() ? dest.length() : 0;
+                if (currentSize == 0) {
+                    throw new Exception("下载失败: " + e.getMessage());
+                }
+
+                retryCount++;
+                if (retryCount > maxRetries) {
+                    throw new Exception("下载多次中断: " + e.getMessage() + "（已下载 " + formatSize(currentSize) + "）");
+                }
+
+                if (paused) {
+                    while (paused && !cancelled) {
+                        try {
+                            Thread.sleep(500);
+                        } catch (InterruptedException ie) {
+                            break;
+                        }
                     }
-                    notifyUpdate();
+                    if (cancelled) throw new Exception("已取消");
                 }
             }
-
-            fos.close();
-            is.close();
         }
+    }
+
+    private String formatSize(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return String.format("%.1f KB", bytes / 1024.0);
+        if (bytes < 1024L * 1024 * 1024) return String.format("%.1f MB", bytes / 1024.0 / 1024.0);
+        return String.format("%.2f GB", bytes / 1024.0 / 1024.0 / 1024.0);
     }
 
     private void mergeVideoAudio(File videoFile, File audioFile, File outputFile) throws Exception {
