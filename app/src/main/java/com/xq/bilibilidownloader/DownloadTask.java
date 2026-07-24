@@ -89,10 +89,13 @@ public class DownloadTask {
             long cid = specifyCid > 0 ? specifyCid : videoInfo.cid;
             String partName = specifyPart != null ? specifyPart : videoInfo.title;
 
+            File actualOutputDir;
             if (videoInfo.pages.size() > 1 && specifyPart != null) {
-                savedFilename = sanitizeFilename(videoInfo.title) + "_P" + findPageNumber(cid) + "_" + sanitizeFilename(partName) + ".mp4";
+                savedFilename = "P" + findPageNumber(cid) + "_" + sanitizeFilename(partName) + ".mp4";
+                actualOutputDir = new File(outputDir, sanitizeFilename(videoInfo.title));
             } else {
                 savedFilename = sanitizeFilename(videoInfo.title) + ".mp4";
+                actualOutputDir = outputDir;
             }
             progress = 10;
             notifyUpdate();
@@ -106,10 +109,11 @@ public class DownloadTask {
             status = Status.DOWNLOADING;
             notifyUpdate();
 
+            actualOutputDir.mkdirs();
             outputDir.mkdirs();
             File tempDir = new File(outputDir, ".temp");
             tempDir.mkdirs();
-            File outputFile = new File(outputDir, savedFilename);
+            File outputFile = new File(actualOutputDir, savedFilename);
             String tempSuffix = cid + "";
             File videoTemp = new File(tempDir, bvid + "_" + tempSuffix + "_video.m4s");
             File audioTemp = new File(tempDir, bvid + "_" + tempSuffix + "_audio.m4s");
