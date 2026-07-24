@@ -2,23 +2,26 @@ package com.xq.bilibilidownloader;
 
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class TaskAdapter {
 
     private LinearLayout container;
-    private List<DownloadTask> tasks = new ArrayList<>();
+    private List<DownloadTask> tasks;
     private OnCancelListener cancelListener;
+    private OnPauseListener pauseListener;
 
     public interface OnCancelListener {
         void onCancel(DownloadTask task);
+    }
+
+    public interface OnPauseListener {
+        void onPause(DownloadTask task);
     }
 
     public void setContainer(LinearLayout container) {
@@ -27,6 +30,10 @@ public class TaskAdapter {
 
     public void setOnCancelListener(OnCancelListener listener) {
         this.cancelListener = listener;
+    }
+
+    public void setOnPauseListener(OnPauseListener listener) {
+        this.pauseListener = listener;
     }
 
     public void updateTasks(List<DownloadTask> newTasks) {
@@ -55,6 +62,7 @@ public class TaskAdapter {
         TextView errorText = v.findViewById(R.id.taskError);
         TextView filenameText = v.findViewById(R.id.taskFilename);
         Button btnCancel = v.findViewById(R.id.btnCancel);
+        Button btnPause = v.findViewById(R.id.btnPause);
 
         title.setText(task.getDisplayTitle());
         url.setText(task.getUrl());
@@ -73,6 +81,10 @@ public class TaskAdapter {
             case DOWNLOADING:
                 statusText = "下载中";
                 statusColor = 0xFF4CAF50;
+                break;
+            case PAUSED:
+                statusText = "已暂停";
+                statusColor = 0xFFFF9800;
                 break;
             case MERGING:
                 statusText = "合并中";
@@ -103,6 +115,7 @@ public class TaskAdapter {
         boolean canCancel = task.getStatus() == DownloadTask.Status.PENDING
                 || task.getStatus() == DownloadTask.Status.PARSING
                 || task.getStatus() == DownloadTask.Status.DOWNLOADING
+                || task.getStatus() == DownloadTask.Status.PAUSED
                 || task.getStatus() == DownloadTask.Status.MERGING;
         btnCancel.setVisibility(canCancel ? View.VISIBLE : View.GONE);
 
@@ -112,9 +125,21 @@ public class TaskAdapter {
             }
         });
 
+        boolean canPause = task.getStatus() == DownloadTask.Status.DOWNLOADING
+                || task.getStatus() == DownloadTask.Status.PAUSED;
+        btnPause.setVisibility(canPause ? View.VISIBLE : View.GONE);
+        btnPause.setText(task.getStatus() == DownloadTask.Status.PAUSED ? "继续" : "暂停");
+
+        btnPause.setOnClickListener(btn -> {
+            if (pauseListener != null) {
+                pauseListener.onPause(task);
+            }
+        });
+
         if (task.getStatus() == DownloadTask.Status.DOWNLOADING
                 || task.getStatus() == DownloadTask.Status.MERGING
-                || task.getStatus() == DownloadTask.Status.PARSING) {
+                || task.getStatus() == DownloadTask.Status.PARSING
+                || task.getStatus() == DownloadTask.Status.PAUSED) {
             progressBar.setVisibility(View.VISIBLE);
             progressText.setVisibility(View.VISIBLE);
             progressBar.setProgress(task.getProgress());
