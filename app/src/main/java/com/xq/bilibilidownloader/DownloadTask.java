@@ -95,6 +95,8 @@ public class DownloadTask {
     }
 
     public void execute() {
+        File videoTemp = null;
+        File audioTemp = null;
         try {
             status = Status.PARSING;
             progress = 5;
@@ -138,9 +140,9 @@ public class DownloadTask {
             File tempDir = new File(outputDir, ".temp");
             tempDir.mkdirs();
             File outputFile = new File(actualOutputDir, savedFilename);
-            String tempSuffix = cid + "";
-            File videoTemp = new File(tempDir, bvid + "_" + tempSuffix + "_video.m4s");
-            File audioTemp = new File(tempDir, bvid + "_" + tempSuffix + "_audio.m4s");
+            String tempSuffix = cid + "_" + qn;
+            videoTemp = new File(tempDir, bvid + "_" + tempSuffix + "_video.m4s");
+            audioTemp = new File(tempDir, bvid + "_" + tempSuffix + "_audio.m4s");
 
             downloadFile(playInfo.videoUrl, videoTemp, 15, 55);
 
@@ -171,6 +173,8 @@ public class DownloadTask {
             status = Status.ERROR;
             if (cancelled) {
                 errorMsg = "已取消";
+                if (videoTemp != null) videoTemp.delete();
+                if (audioTemp != null) audioTemp.delete();
             } else {
                 errorMsg = e.getMessage() != null ? e.getMessage() : "未知错误";
             }
