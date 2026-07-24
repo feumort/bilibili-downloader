@@ -247,9 +247,23 @@ public class MainActivity extends AppCompatActivity {
 
     private void refreshTaskList() {
         List<DownloadTask> tasks = downloadManager.getTasks();
-        adapter.updateTasks(tasks);
+        List<DownloadTask> sorted = new ArrayList<>();
+        for (DownloadTask t : tasks) {
+            DownloadTask.Status s = t.getStatus();
+            if (s == DownloadTask.Status.PENDING || s == DownloadTask.Status.PARSING
+                    || s == DownloadTask.Status.DOWNLOADING || s == DownloadTask.Status.MERGING) {
+                sorted.add(t);
+            }
+        }
+        for (DownloadTask t : tasks) {
+            DownloadTask.Status s = t.getStatus();
+            if (s == DownloadTask.Status.COMPLETED || s == DownloadTask.Status.ERROR) {
+                sorted.add(t);
+            }
+        }
+        adapter.updateTasks(sorted);
 
-        if (tasks.isEmpty()) {
+        if (sorted.isEmpty()) {
             taskList.setVisibility(View.GONE);
             emptyText.setVisibility(View.VISIBLE);
             clearBtn.setVisibility(View.GONE);
