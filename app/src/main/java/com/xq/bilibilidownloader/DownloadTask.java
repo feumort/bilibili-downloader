@@ -188,7 +188,7 @@ public class DownloadTask {
     }
 
     private void downloadFile(String fileUrl, File dest, int progressStart, int progressEnd) throws Exception {
-        int maxRetries = 10;
+        int maxRetries = 20;
         int retryCount = 0;
 
         while (retryCount <= maxRetries) {
@@ -204,6 +204,10 @@ public class DownloadTask {
             }
 
             Response response = null;
+            InputStream is = null;
+            FileOutputStream fos = null;
+            boolean retryAfterPause = false;
+
             try {
                 response = downloadClient.newCall(rb.build()).execute();
                 int code = response.code();
@@ -211,11 +215,17 @@ public class DownloadTask {
                     throw new Exception("下载失败: HTTP " + code);
                 }
 
+                if (offset > 0 && code == 200) {
+                    offset = 0;
+                }
+
                 long contentLength = response.body() != null ? response.body().contentLength() : -1;
-                InputStream is = response.body() != null ? response.body().byteStream() : null;
+                is = response.body() != null ? response.body().byteStream() : null;
                 if (is == null) throw new Exception("下载失败: 无响应体");
 
-                FileOutputStream fos = new FileOutputStream(dest, offset > 0);
+                boolean appendMode = (offset > 0 && code == 206);
+                fos = new FileOutputStream(dest, appendMode);
+
                 byte[] buffer = new byte[8192];
                 long totalRead = offset;
                 long startTime = System.currentTimeMillis();
@@ -223,30 +233,48 @@ public class DownloadTask {
 
                 while ((bytesRead = is.read(buffer)) != -1) {
                     if (cancelled) {
+                        fos.flush();
                         fos.close();
                         is.close();
+                        response.close();
                         throw new Exception("已取消");
                     }
+
+                    boolean wasPaused = false;
                     while (paused && !cancelled) {
+                        wasPaused = true;
                         try {
                             Thread.sleep(500);
                         } catch (InterruptedException e) {
                             break;
                         }
                     }
+
                     if (cancelled) {
+                        fos.flush();
                         fos.close();
                         is.close();
+                        response.close();
                         throw new Exception("已取消");
                     }
+
                     fos.write(buffer, 0, bytesRead);
                     totalRead += bytesRead;
+
+                    if (wasPaused) {
+                        fos.flush();
+                        fos.close();
+                        is.close();
+                        response.close();
+                        retryAfterPause = true;
+                        break;
+                    }
 
                     long now = System.currentTimeMillis();
                     if (now - lastUpdateTime > 400) {
                         lastUpdateTime = now;
                         if (contentLength > 0) {
-                            long fullLength = contentLength + offset;
+                            long fullLength = (code == 206) ? contentLength + offset : contentLength;
                             progress = (int) (progressStart + (totalRead * 1.0 / fullLength) * (progressEnd - progressStart));
                         }
                         long elapsed = (now - startTime) / 1000;
@@ -257,24 +285,35 @@ public class DownloadTask {
                     }
                 }
 
+                if (retryAfterPause) {
+                    retryCount++;
+                    continue;
+                }
+
                 fos.flush();
                 fos.close();
                 is.close();
                 response.close();
 
-                long expectedSize = (contentLength > 0) ? offset + contentLength : -1;
-                if (expectedSize > 0 && totalRead < expectedSize) {
-                    retryCount++;
-                    if (retryCount > maxRetries) {
-                        throw new Exception("下载多次中断，已下载 " + formatSize(totalRead));
+                if (contentLength > 0) {
+                    long expectedTotal = (code == 206) ? offset + contentLength : contentLength;
+                    if (totalRead < expectedTotal) {
+                        retryCount++;
+                        if (retryCount > maxRetries) {
+                            throw new Exception("下载不完整，已下载 " + formatSize(totalRead));
+                        }
+                        continue;
                     }
-                    continue;
                 }
 
                 return;
 
             } catch (IOException e) {
+                try { if (fos != null) fos.flush(); } catch (Exception ignored) {}
+                try { if (fos != null) fos.close(); } catch (Exception ignored) {}
+                try { if (is != null) is.close(); } catch (Exception ignored) {}
                 if (response != null) response.close();
+
                 if (cancelled) throw new Exception("已取消");
 
                 long currentSize = dest.exists() ? dest.length() : 0;
@@ -287,16 +326,14 @@ public class DownloadTask {
                     throw new Exception("下载多次中断: " + e.getMessage() + "（已下载 " + formatSize(currentSize) + "）");
                 }
 
-                if (paused) {
-                    while (paused && !cancelled) {
-                        try {
-                            Thread.sleep(500);
-                        } catch (InterruptedException ie) {
-                            break;
-                        }
+                while (paused && !cancelled) {
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException ie) {
+                        break;
                     }
-                    if (cancelled) throw new Exception("已取消");
                 }
+                if (cancelled) throw new Exception("已取消");
             }
         }
     }
