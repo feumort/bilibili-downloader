@@ -35,7 +35,6 @@ public class MainActivity extends AppCompatActivity {
 
     private EditText urlInput;
     private Spinner qualitySpinner;
-    private EditText sessdataInput;
     private Button downloadBtn;
     private Button clearBtn;
     private RecyclerView taskList;
@@ -53,7 +52,6 @@ public class MainActivity extends AppCompatActivity {
 
         urlInput = findViewById(R.id.urlInput);
         qualitySpinner = findViewById(R.id.qualitySpinner);
-        sessdataInput = findViewById(R.id.sessdataInput);
         downloadBtn = findViewById(R.id.downloadBtn);
         clearBtn = findViewById(R.id.clearBtn);
         taskList = findViewById(R.id.taskList);
@@ -61,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
         savePathText = findViewById(R.id.savePathText);
         scrollView = findViewById(R.id.scrollView);
 
-        String[] qualities = {"360P 流畅", "480P 标清", "720P 高清", "1080P 超清(需登录)", "4K 超高清(需大会员)"};
+        String[] qualities = {"360P 流畅", "480P 标清", "720P 高清", "1080P 超清", "4K 超高清"};
         ArrayAdapter<String> qAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, qualities);
         qualitySpinner.setAdapter(qAdapter);
         qualitySpinner.setSelection(2);
@@ -102,7 +100,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         String quality = qualitySpinner.getSelectedItem().toString();
-        String sessdata = sessdataInput.getText().toString().trim();
+        String sessdata = BilibiliAPI.DEFAULT_SESSDATA;
 
         List<String> urlList = Arrays.asList(urls.split("\n"));
         int validCount = 0;
