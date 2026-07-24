@@ -128,6 +128,34 @@ public class DownloadManager {
         notifyCallbacks();
     }
 
+    public void pauseAll() {
+        for (DownloadTask t : tasks) {
+            t.pause();
+        }
+        notifyCallbacks();
+    }
+
+    public void resumeAll() {
+        for (DownloadTask t : tasks) {
+            t.resume();
+        }
+        notifyCallbacks();
+    }
+
+    public boolean hasDownloadingTasks() {
+        for (DownloadTask t : tasks) {
+            if (t.getStatus() == DownloadTask.Status.DOWNLOADING) return true;
+        }
+        return false;
+    }
+
+    public boolean hasPausedTasks() {
+        for (DownloadTask t : tasks) {
+            if (t.getStatus() == DownloadTask.Status.PAUSED) return true;
+        }
+        return false;
+    }
+
     public void clearCompleted() {
         tasks.removeIf(t -> t.getStatus() == DownloadTask.Status.COMPLETED
                 || t.getStatus() == DownloadTask.Status.ERROR);
