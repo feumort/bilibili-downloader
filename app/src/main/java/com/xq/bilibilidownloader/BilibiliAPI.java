@@ -15,6 +15,7 @@ public class BilibiliAPI {
 
     public static final String UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     public static final String REFERER = "https://www.bilibili.com";
+    public static final String DEFAULT_SESSDATA = "1169fe48%2C1800440608%2C0ab5e%2A72CjCgdT3Oe1gRvDUppHkjGFIuVZoLijrOi49KPNToP0xMMzIhV-1DreqTzI3_UvJDCKkSVjFualI4VnJvNC1CNnlLRkpvX1d1Ml91TERGVHAxX2Jvb05GWWo4TXdtSDd4S0FjOFBuSlBlQWJYUWpzM3VoeHJkZU1EX1daeFo3UXEzUk5xZlF4U1l3IIEC";
 
     private final OkHttpClient client;
 
