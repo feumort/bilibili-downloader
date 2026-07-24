@@ -1,13 +1,17 @@
 package com.xq.bilibilidownloader;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Environment;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -21,6 +25,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -100,19 +105,145 @@ public class MainActivity extends AppCompatActivity {
         String sessdata = sessdataInput.getText().toString().trim();
 
         List<String> urlList = Arrays.asList(urls.split("\n"));
-        File saveDir = getSaveDir();
-
-        int count = 0;
+        int validCount = 0;
         for (String u : urlList) {
-            if (!u.trim().isEmpty()) count++;
+            if (!u.trim().isEmpty()) validCount++;
         }
 
-        downloadManager.submit(urlList, quality, sessdata, saveDir);
+        if (validCount == 1) {
+            String singleUrl = null;
+            for (String u : urlList) {
+                if (!u.trim().isEmpty()) {
+                    singleUrl = u.trim();
+                    break;
+                }
+            }
+            parseAndDownload(singleUrl, quality, sessdata);
+        } else {
+            downloadManager.submit(urlList, quality, sessdata, getSaveDir());
+            urlInput.setText("");
+            Toast.makeText(this, "已添加 " + validCount + " 个下载任务", Toast.LENGTH_SHORT).show();
+            scrollView.post(() -> scrollView.fullScroll(ScrollView.FOCUS_DOWN));
+        }
+    }
 
-        urlInput.setText("");
-        Toast.makeText(this, "已添加 " + count + " 个下载任务", Toast.LENGTH_SHORT).show();
+    private void parseAndDownload(String url, String quality, String sessdata) {
+        downloadBtn.setEnabled(false);
+        downloadBtn.setText("解析中...");
 
-        scrollView.post(() -> scrollView.fullScroll(ScrollView.FOCUS_DOWN));
+        new Thread(() -> {
+            try {
+                BilibiliAPI api = new BilibiliAPI();
+                String bvid = api.resolveBvid(url);
+                if (bvid == null) {
+                    runOnUiThread(() -> {
+                        downloadBtn.setEnabled(true);
+                        downloadBtn.setText("开始下载");
+                        Toast.makeText(this, "无法解析视频链接，请检查URL", Toast.LENGTH_LONG).show();
+                    });
+                    return;
+                }
+
+                VideoInfo info = api.getVideoInfo(bvid, sessdata);
+
+                runOnUiThread(() -> {
+                    downloadBtn.setEnabled(true);
+                    downloadBtn.setText("开始下载");
+                    if (info.pages.size() > 1) {
+                        showPageSelectionDialog(url, quality, sessdata, info);
+                    } else {
+                        downloadManager.submit(Arrays.asList(url), quality, sessdata, getSaveDir());
+                        urlInput.setText("");
+                        Toast.makeText(this, "已添加下载任务", Toast.LENGTH_SHORT).show();
+                        scrollView.post(() -> scrollView.fullScroll(ScrollView.FOCUS_DOWN));
+                    }
+                });
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    downloadBtn.setEnabled(true);
+                    downloadBtn.setText("开始下载");
+                    Toast.makeText(this, "解析失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                });
+            }
+        }).start();
+    }
+
+    private void showPageSelectionDialog(String url, String quality, String sessdata, VideoInfo info) {
+        boolean[] checked = new boolean[info.pages.size()];
+        for (int i = 0; i < checked.length; i++) checked[i] = false;
+
+        String[] labels = new String[info.pages.size()];
+        for (int i = 0; i < info.pages.size(); i++) {
+            VideoInfo.Page p = info.pages.get(i);
+            labels[i] = "P" + p.page + " " + p.part;
+        }
+
+        ScrollView dialogScroll = new ScrollView(this);
+        LinearLayout dialogLayout = new LinearLayout(this);
+        dialogLayout.setOrientation(LinearLayout.VERTICAL);
+        dialogLayout.setPadding(50, 30, 50, 30);
+
+        List<CheckBox> checkboxes = new ArrayList<>();
+        for (int i = 0; i < labels.length; i++) {
+            CheckBox cb = new CheckBox(this);
+            cb.setText(labels[i]);
+            cb.setChecked(false);
+            cb.setTextSize(14);
+            final int idx = i;
+            cb.setOnCheckedChangeListener((button, isChecked) -> checked[idx] = isChecked);
+            checkboxes.add(cb);
+            dialogLayout.addView(cb);
+        }
+
+        dialogScroll.addView(dialogLayout);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(info.title + "（共" + info.pages.size() + "P）");
+        builder.setView(dialogScroll);
+
+        builder.setNeutralButton("全选", null);
+        builder.setPositiveButton("下载选中", null);
+        builder.setNegativeButton("取消", null);
+
+        AlertDialog dialog = builder.create();
+        dialog.show();
+
+        dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
+            boolean allChecked = true;
+            for (CheckBox cb : checkboxes) {
+                if (!cb.isChecked()) {
+                    allChecked = false;
+                    break;
+                }
+            }
+            for (int i = 0; i < checkboxes.size(); i++) {
+                checkboxes.get(i).setChecked(!allChecked);
+                checked[i] = !allChecked;
+            }
+            ((Button) v).setText(allChecked ? "全选" : "取消全选");
+        });
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            int selectedCount = 0;
+            for (boolean b : checked) if (b) selectedCount++;
+
+            if (selectedCount == 0) {
+                Toast.makeText(this, "请至少选择一个分P", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            for (int i = 0; i < info.pages.size(); i++) {
+                if (checked[i]) {
+                    VideoInfo.Page p = info.pages.get(i);
+                    downloadManager.submitPage(url, quality, sessdata, getSaveDir(), p.cid, p.part);
+                }
+            }
+
+            urlInput.setText("");
+            Toast.makeText(this, "已添加 " + selectedCount + " 个下载任务", Toast.LENGTH_SHORT).show();
+            scrollView.post(() -> scrollView.fullScroll(ScrollView.FOCUS_DOWN));
+            dialog.dismiss();
+        });
     }
 
     private void refreshTaskList() {
