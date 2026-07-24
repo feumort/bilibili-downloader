@@ -59,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
         savePathText = findViewById(R.id.savePathText);
         scrollView = findViewById(R.id.scrollView);
 
-        String[] qualities = {"360P 流畅", "480P 标清", "720P 高清", "1080P 超清", "4K 超高清"};
+        String[] qualities = {"360P 流畅", "480P 标清", "720P 高清", "1080P 超清"};
         ArrayAdapter<String> qAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, qualities);
         qualitySpinner.setAdapter(qAdapter);
         qualitySpinner.setSelection(2);
@@ -68,6 +68,7 @@ public class MainActivity extends AppCompatActivity {
         adapter = new TaskAdapter();
         taskList.setAdapter(adapter);
         taskList.setNestedScrollingEnabled(false);
+        adapter.setOnCancelListener(task -> downloadManager.cancelTask(task));
 
         downloadManager = new DownloadManager();
         downloadManager.setOnUpdate(this::refreshTaskList);
