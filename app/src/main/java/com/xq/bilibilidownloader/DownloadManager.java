@@ -2,6 +2,7 @@ package com.xq.bilibilidownloader;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -41,7 +42,30 @@ public class DownloadManager {
         if (onUpdateCallback != null) onUpdateCallback.run();
     }
 
+    private void autoCleanup() {
+        int completedCount = 0;
+        for (DownloadTask t : tasks) {
+            DownloadTask.Status s = t.getStatus();
+            if (s == DownloadTask.Status.COMPLETED || s == DownloadTask.Status.ERROR) {
+                completedCount++;
+            }
+        }
+        if (completedCount > 20) {
+            int toRemove = completedCount - 20;
+            Iterator<DownloadTask> it = tasks.iterator();
+            while (it.hasNext() && toRemove > 0) {
+                DownloadTask t = it.next();
+                DownloadTask.Status s = t.getStatus();
+                if (s == DownloadTask.Status.COMPLETED || s == DownloadTask.Status.ERROR) {
+                    it.remove();
+                    toRemove--;
+                }
+            }
+        }
+    }
+
     public List<DownloadTask> getTasks() {
+        autoCleanup();
         return tasks;
     }
 
