@@ -59,24 +59,6 @@
                 android:layout_weight="1" />
         </LinearLayout>
 
-        <com.google.android.material.textfield.TextInputLayout
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-            xmlns:app="http://schemas.android.com/apk/res-auto"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="SESSDATA（可选，1080P+需要）"
-            android:layout_marginBottom="16dp"
-            app:endIconMode="password_toggle">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/sessdataInput"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="textPassword"
-                android:singleLine="true"
-                android:textSize="14sp" />
-        </com.google.android.material.textfield.TextInputLayout>
-
         <Button
             android:id="@+id/downloadBtn"
             android:layout_width="match_parent"
