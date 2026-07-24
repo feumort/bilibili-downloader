@@ -21,8 +21,6 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -37,7 +35,7 @@ public class MainActivity extends AppCompatActivity {
     private Spinner qualitySpinner;
     private Button downloadBtn;
     private Button clearBtn;
-    private RecyclerView taskList;
+    private LinearLayout taskList;
     private TextView emptyText;
     private TextView savePathText;
     private ScrollView scrollView;
@@ -64,10 +62,8 @@ public class MainActivity extends AppCompatActivity {
         qualitySpinner.setAdapter(qAdapter);
         qualitySpinner.setSelection(2);
 
-        taskList.setLayoutManager(new LinearLayoutManager(this));
         adapter = new TaskAdapter();
-        taskList.setAdapter(adapter);
-        taskList.setNestedScrollingEnabled(false);
+        adapter.setContainer(taskList);
         adapter.setOnCancelListener(task -> downloadManager.cancelTask(task));
 
         downloadManager = new DownloadManager();
