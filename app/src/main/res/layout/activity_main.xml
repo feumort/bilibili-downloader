@@ -70,15 +70,33 @@
             android:padding="12dp"
             android:layout_marginBottom="8dp" />
 
-        <Button
-            android:id="@+id/clearBtn"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="清除已完成"
-            android:backgroundTint="#999999"
-            android:textColor="#FFFFFF"
-            android:visibility="gone"
-            android:layout_marginBottom="8dp" />
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <Button
+                android:id="@+id/cancelAllBtn"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="全部取消"
+                android:backgroundTint="#F44336"
+                android:textColor="#FFFFFF"
+                android:visibility="gone"
+                android:layout_marginEnd="6dp" />
+
+            <Button
+                android:id="@+id/clearBtn"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="清除已完成"
+                android:backgroundTint="#999999"
+                android:textColor="#FFFFFF"
+                android:visibility="gone" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/savePathText"
