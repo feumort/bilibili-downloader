@@ -84,7 +84,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private File getSaveDir() {
-        return new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "BilibiliDownloader");
+        return new File(Environment.getExternalStorageDirectory(), "BilibiliDownloader");
     }
 
     private void startDownload() {
