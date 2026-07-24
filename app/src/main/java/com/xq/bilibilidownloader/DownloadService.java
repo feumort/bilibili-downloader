@@ -61,9 +61,14 @@ public class DownloadService extends Service {
     private Notification buildNotification() {
         DownloadManager dm = DownloadManager.getInstance();
         int active = dm.getActiveCount();
+        boolean allPaused = dm.hasPausedTasks() && !dm.hasDownloadingTasks();
         String contentText;
         if (active > 0) {
-            contentText = "正在下载 " + active + " 个视频";
+            if (allPaused) {
+                contentText = "已暂停 " + active + " 个任务";
+            } else {
+                contentText = "正在下载 " + active + " 个视频";
+            }
         } else {
             contentText = "下载完成";
         }
