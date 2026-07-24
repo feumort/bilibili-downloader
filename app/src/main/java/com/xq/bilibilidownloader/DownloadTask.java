@@ -20,7 +20,7 @@ import okhttp3.Response;
 
 public class DownloadTask {
 
-    public enum Status { PENDING, PARSING, DOWNLOADING, MERGING, COMPLETED, ERROR }
+    public enum Status { PENDING, PARSING, DOWNLOADING, PAUSED, MERGING, COMPLETED, ERROR }
 
     private final String url;
     private final String qualityLabel;
@@ -43,6 +43,7 @@ public class DownloadTask {
     private Runnable onUpdateCallback;
 
     private volatile boolean cancelled = false;
+    private volatile boolean paused = false;
     private long lastUpdateTime = 0;
 
     public DownloadTask(String url, String qualityLabel, String sessdata, File outputDir) {
@@ -60,7 +61,7 @@ public class DownloadTask {
         this.api = new BilibiliAPI();
         this.downloadClient = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(60, TimeUnit.SECONDS)
+                .readTimeout(300, TimeUnit.SECONDS)
                 .followRedirects(true)
                 .build();
     }
@@ -71,6 +72,26 @@ public class DownloadTask {
 
     public void cancel() {
         cancelled = true;
+    }
+
+    public void pause() {
+        if (status == Status.DOWNLOADING) {
+            paused = true;
+            status = Status.PAUSED;
+            notifyUpdate();
+        }
+    }
+
+    public void resume() {
+        if (status == Status.PAUSED) {
+            paused = false;
+            status = Status.DOWNLOADING;
+            notifyUpdate();
+        }
+    }
+
+    public boolean isPaused() {
+        return paused;
     }
 
     public void execute() {
@@ -128,6 +149,7 @@ public class DownloadTask {
             }
 
             status = Status.MERGING;
+            paused = false;
             progress = 85;
             notifyUpdate();
 
@@ -188,6 +210,18 @@ public class DownloadTask {
             int bytesRead;
 
             while ((bytesRead = is.read(buffer)) != -1) {
+                if (cancelled) {
+                    fos.close();
+                    is.close();
+                    throw new Exception("已取消");
+                }
+                while (paused && !cancelled) {
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException e) {
+                        break;
+                    }
+                }
                 if (cancelled) {
                     fos.close();
                     is.close();
