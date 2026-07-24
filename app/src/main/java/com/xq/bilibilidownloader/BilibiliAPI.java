@@ -109,7 +109,13 @@ public class BilibiliAPI {
                 .header("User-Agent", UA)
                 .header("Referer", REFERER);
         if (sessdata != null && !sessdata.isEmpty()) {
-            rb.header("Cookie", "SESSDATA=" + sessdata);
+            String decoded = sessdata;
+            try {
+                decoded = java.net.URLDecoder.decode(sessdata, "UTF-8");
+            } catch (Exception e) {
+                decoded = sessdata;
+            }
+            rb.header("Cookie", "SESSDATA=" + decoded);
         }
 
         try (Response response = client.newCall(rb.build()).execute()) {
@@ -158,12 +164,18 @@ public class BilibiliAPI {
 
     public PlayUrlInfo getPlayUrl(String bvid, long cid, int qn, String sessdata) throws Exception {
         String url = "https://api.bilibili.com/x/player/playurl?bvid=" + bvid
-                + "&cid=" + cid + "&qn=" + qn + "&fnval=4048&fourk=1";
+                + "&cid=" + cid + "&qn=" + qn + "&fnval=4048&fourk=1&platform=html5";
         Request.Builder rb = new Request.Builder().url(url)
                 .header("User-Agent", UA)
                 .header("Referer", REFERER);
         if (sessdata != null && !sessdata.isEmpty()) {
-            rb.header("Cookie", "SESSDATA=" + sessdata);
+            String decoded = sessdata;
+            try {
+                decoded = java.net.URLDecoder.decode(sessdata, "UTF-8");
+            } catch (Exception e) {
+                decoded = sessdata;
+            }
+            rb.header("Cookie", "SESSDATA=" + decoded);
         }
 
         try (Response response = client.newCall(rb.build()).execute()) {
@@ -183,23 +195,38 @@ public class BilibiliAPI {
                 JSONArray videos = dash.getJSONArray("video");
                 JSONArray audios = dash.optJSONArray("audio");
 
+                String bestUrl = null;
+                int bestQn = -1;
+
                 for (int i = 0; i < videos.length(); i++) {
                     JSONObject v = videos.getJSONObject(i);
-                    if (v.getInt("id") == info.quality) {
-                        info.videoUrl = v.optString("baseUrl", v.optString("base_url", ""));
-                        if (info.videoUrl.isEmpty()) {
-                            info.videoUrl = v.optString("backupUrl", v.optString("backup_url", ""));
-                        }
+                    int vid = v.optInt("id", 0);
+                    String vUrl = v.optString("baseUrl", v.optString("base_url", ""));
+                    if (vUrl.isEmpty()) {
+                        vUrl = v.optString("backupUrl", v.optString("backup_url", ""));
+                    }
+
+                    if (vid == qn && vUrl != null && !vUrl.isEmpty()) {
+                        bestUrl = vUrl;
+                        bestQn = qn;
                         break;
                     }
-                }
-                if (info.videoUrl == null && videos.length() > 0) {
-                    JSONObject v = videos.getJSONObject(0);
-                    info.videoUrl = v.optString("baseUrl", v.optString("base_url", ""));
-                    if (info.videoUrl.isEmpty()) {
-                        info.videoUrl = v.optString("backupUrl", v.optString("backup_url", ""));
+
+                    if (vid == info.quality && bestUrl == null && vUrl != null && !vUrl.isEmpty()) {
+                        bestUrl = vUrl;
+                        bestQn = vid;
+                    }
+
+                    if (bestUrl == null && vUrl != null && !vUrl.isEmpty()) {
+                        bestUrl = vUrl;
+                        bestQn = vid;
                     }
                 }
+
+                if (bestQn > 0) {
+                    info.quality = bestQn;
+                }
+                info.videoUrl = bestUrl;
 
                 if (audios != null && audios.length() > 0) {
                     JSONObject a = audios.getJSONObject(0);
