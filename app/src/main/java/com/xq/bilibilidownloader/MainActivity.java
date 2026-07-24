@@ -2,6 +2,7 @@ package com.xq.bilibilidownloader;
 
 import android.Manifest;
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Environment;
@@ -11,7 +12,6 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -43,6 +43,7 @@ public class MainActivity extends AppCompatActivity {
 
     private DownloadManager downloadManager;
     private TaskAdapter adapter;
+    private Runnable uiCallback;
     private long lastRefreshTime = 0;
     private static final long REFRESH_INTERVAL_MS = 400;
 
@@ -66,12 +67,21 @@ public class MainActivity extends AppCompatActivity {
         qualitySpinner.setAdapter(qAdapter);
         qualitySpinner.setSelection(2);
 
+        downloadManager = DownloadManager.getInstance();
+
         adapter = new TaskAdapter();
         adapter.setContainer(taskList);
         adapter.setOnCancelListener(task -> downloadManager.cancelTask(task));
+        adapter.setOnPauseListener(task -> {
+            if (task.isPaused()) {
+                task.resume();
+            } else {
+                task.pause();
+            }
+        });
 
-        downloadManager = new DownloadManager();
-        downloadManager.setOnUpdate(this::throttledRefresh);
+        uiCallback = () -> throttledRefresh();
+        downloadManager.addCallback(uiCallback);
 
         File saveDir = getSaveDir();
         savePathText.setText("保存位置: " + saveDir.getAbsolutePath());
@@ -90,6 +100,21 @@ public class MainActivity extends AppCompatActivity {
         if (!checkPermission()) {
             requestPermission();
         }
+
+        refreshTaskList();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (uiCallback != null) {
+            downloadManager.removeCallback(uiCallback);
+        }
+    }
+
+    private void startDownloadService() {
+        Intent serviceIntent = new Intent(this, DownloadService.class);
+        startService(serviceIntent);
     }
 
     private File getSaveDir() {
@@ -127,6 +152,7 @@ public class MainActivity extends AppCompatActivity {
             }
             parseAndDownload(singleUrl, quality, sessdata);
         } else {
+            startDownloadService();
             downloadManager.submit(urlList, quality, sessdata, getSaveDir());
             urlInput.setText("");
             Toast.makeText(this, "已添加 " + validCount + " 个下载任务", Toast.LENGTH_SHORT).show();
@@ -159,6 +185,7 @@ public class MainActivity extends AppCompatActivity {
                     if (info.pages.size() > 1) {
                         showPageSelectionDialog(url, quality, sessdata, info);
                     } else {
+                        startDownloadService();
                         downloadManager.submit(Arrays.asList(url), quality, sessdata, getSaveDir());
                         urlInput.setText("");
                         Toast.makeText(this, "已添加下载任务", Toast.LENGTH_SHORT).show();
@@ -239,6 +266,7 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
+            startDownloadService();
             for (int i = 0; i < info.pages.size(); i++) {
                 if (checked[i]) {
                     VideoInfo.Page p = info.pages.get(i);
@@ -267,7 +295,8 @@ public class MainActivity extends AppCompatActivity {
         for (DownloadTask t : tasks) {
             DownloadTask.Status s = t.getStatus();
             if (s == DownloadTask.Status.PENDING || s == DownloadTask.Status.PARSING
-                    || s == DownloadTask.Status.DOWNLOADING || s == DownloadTask.Status.MERGING) {
+                    || s == DownloadTask.Status.DOWNLOADING || s == DownloadTask.Status.PAUSED
+                    || s == DownloadTask.Status.MERGING) {
                 sorted.add(t);
                 hasActive = true;
             }
