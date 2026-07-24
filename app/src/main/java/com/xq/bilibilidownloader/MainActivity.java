@@ -35,6 +35,7 @@ public class MainActivity extends AppCompatActivity {
     private Spinner qualitySpinner;
     private Button downloadBtn;
     private Button clearBtn;
+    private Button cancelAllBtn;
     private LinearLayout taskList;
     private TextView emptyText;
     private TextView savePathText;
@@ -54,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
         qualitySpinner = findViewById(R.id.qualitySpinner);
         downloadBtn = findViewById(R.id.downloadBtn);
         clearBtn = findViewById(R.id.clearBtn);
+        cancelAllBtn = findViewById(R.id.cancelAllBtn);
         taskList = findViewById(R.id.taskList);
         emptyText = findViewById(R.id.emptyText);
         savePathText = findViewById(R.id.savePathText);
@@ -76,6 +78,14 @@ public class MainActivity extends AppCompatActivity {
 
         downloadBtn.setOnClickListener(v -> startDownload());
         clearBtn.setOnClickListener(v -> downloadManager.clearCompleted());
+        cancelAllBtn.setOnClickListener(v -> {
+            new AlertDialog.Builder(this)
+                    .setTitle("确认取消")
+                    .setMessage("确定取消所有下载任务吗？")
+                    .setPositiveButton("确定", (d, w) -> downloadManager.cancelAll())
+                    .setNegativeButton("不取消", null)
+                    .show();
+        });
 
         if (!checkPermission()) {
             requestPermission();
@@ -253,11 +263,13 @@ public class MainActivity extends AppCompatActivity {
     private void refreshTaskList() {
         List<DownloadTask> tasks = downloadManager.getTasks();
         List<DownloadTask> sorted = new ArrayList<>();
+        boolean hasActive = false;
         for (DownloadTask t : tasks) {
             DownloadTask.Status s = t.getStatus();
             if (s == DownloadTask.Status.PENDING || s == DownloadTask.Status.PARSING
                     || s == DownloadTask.Status.DOWNLOADING || s == DownloadTask.Status.MERGING) {
                 sorted.add(t);
+                hasActive = true;
             }
         }
         for (DownloadTask t : tasks) {
@@ -272,10 +284,12 @@ public class MainActivity extends AppCompatActivity {
             taskList.setVisibility(View.GONE);
             emptyText.setVisibility(View.VISIBLE);
             clearBtn.setVisibility(View.GONE);
+            cancelAllBtn.setVisibility(View.GONE);
         } else {
             taskList.setVisibility(View.VISIBLE);
             emptyText.setVisibility(View.GONE);
             clearBtn.setVisibility(View.VISIBLE);
+            cancelAllBtn.setVisibility(hasActive ? View.VISIBLE : View.GONE);
         }
     }
 
