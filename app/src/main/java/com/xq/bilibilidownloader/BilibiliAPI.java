@@ -132,6 +132,25 @@ public class BilibiliAPI {
                 info.upName = owner.optString("name", "");
             }
 
+            JSONArray pagesArr = data.optJSONArray("pages");
+            if (pagesArr != null) {
+                for (int i = 0; i < pagesArr.length(); i++) {
+                    JSONObject pg = pagesArr.getJSONObject(i);
+                    VideoInfo.Page page = new VideoInfo.Page();
+                    page.page = pg.optInt("page", i + 1);
+                    page.cid = pg.optLong("cid");
+                    page.part = pg.optString("part", "P" + page.page);
+                    info.pages.add(page);
+                }
+            }
+            if (info.pages.isEmpty()) {
+                VideoInfo.Page page = new VideoInfo.Page();
+                page.page = 1;
+                page.cid = info.cid;
+                page.part = info.title;
+                info.pages.add(page);
+            }
+
             return info;
         }
     }
