@@ -211,6 +211,10 @@ public class DownloadTask {
             try {
                 response = downloadClient.newCall(rb.build()).execute();
                 int code = response.code();
+                if (code == 416) {
+                    response.close();
+                    return;
+                }
                 if (code != 200 && code != 206) {
                     throw new Exception("下载失败: HTTP " + code);
                 }
@@ -286,7 +290,6 @@ public class DownloadTask {
                 }
 
                 if (retryAfterPause) {
-                    retryCount++;
                     continue;
                 }
 
@@ -336,6 +339,8 @@ public class DownloadTask {
                 if (cancelled) throw new Exception("已取消");
             }
         }
+
+        throw new Exception("下载超出最大重试次数");
     }
 
     private String formatSize(long bytes) {
