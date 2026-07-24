@@ -91,7 +91,10 @@ public class DownloadTask {
 
             File actualOutputDir;
             if (videoInfo.pages.size() > 1 && specifyPart != null) {
-                savedFilename = "P" + findPageNumber(cid) + "_" + sanitizeFilename(partName) + ".mp4";
+                int pageNum = findPageNumber(cid);
+                int total = videoInfo.pages.size();
+                int width = total >= 100 ? 3 : 2;
+                savedFilename = String.format("P%0" + width + "d_", pageNum) + sanitizeFilename(partName) + ".mp4";
                 actualOutputDir = new File(outputDir, sanitizeFilename(videoInfo.title));
             } else {
                 savedFilename = sanitizeFilename(videoInfo.title) + ".mp4";
