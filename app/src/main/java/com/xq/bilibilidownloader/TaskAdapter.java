@@ -4,22 +4,25 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-
-import androidx.annotation.NonNull;
-import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
+public class TaskAdapter {
 
+    private LinearLayout container;
     private List<DownloadTask> tasks = new ArrayList<>();
     private OnCancelListener cancelListener;
 
     public interface OnCancelListener {
         void onCancel(DownloadTask task);
+    }
+
+    public void setContainer(LinearLayout container) {
+        this.container = container;
     }
 
     public void setOnCancelListener(OnCancelListener listener) {
@@ -28,23 +31,33 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
 
     public void updateTasks(List<DownloadTask> newTasks) {
         this.tasks = newTasks;
-        notifyDataSetChanged();
+
+        if (container.getChildCount() != tasks.size()) {
+            container.removeAllViews();
+            for (int i = 0; i < tasks.size(); i++) {
+                View v = LayoutInflater.from(container.getContext())
+                        .inflate(R.layout.item_task, container, false);
+                container.addView(v);
+            }
+        }
+
+        for (int i = 0; i < tasks.size(); i++) {
+            bindView(container.getChildAt(i), tasks.get(i));
+        }
     }
 
-    @NonNull
-    @Override
-    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View v = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_task, parent, false);
-        return new ViewHolder(v);
-    }
+    private void bindView(View v, DownloadTask task) {
+        TextView title = v.findViewById(R.id.taskTitle);
+        TextView url = v.findViewById(R.id.taskUrl);
+        TextView status = v.findViewById(R.id.taskStatus);
+        TextView progressText = v.findViewById(R.id.taskProgress);
+        ProgressBar progressBar = v.findViewById(R.id.taskProgressBar);
+        TextView errorText = v.findViewById(R.id.taskError);
+        TextView filenameText = v.findViewById(R.id.taskFilename);
+        Button btnCancel = v.findViewById(R.id.btnCancel);
 
-    @Override
-    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        DownloadTask task = tasks.get(position);
-
-        holder.title.setText(task.getDisplayTitle());
-        holder.url.setText(task.getUrl());
+        title.setText(task.getDisplayTitle());
+        url.setText(task.getUrl());
 
         String statusText;
         int statusColor;
@@ -84,16 +97,16 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
                 || task.getStatus() == DownloadTask.Status.COMPLETED)) {
             statusText += " · " + task.getQualityText();
         }
-        holder.status.setText(statusText);
-        holder.status.setTextColor(statusColor);
+        status.setText(statusText);
+        status.setTextColor(statusColor);
 
         boolean canCancel = task.getStatus() == DownloadTask.Status.PENDING
                 || task.getStatus() == DownloadTask.Status.PARSING
                 || task.getStatus() == DownloadTask.Status.DOWNLOADING
                 || task.getStatus() == DownloadTask.Status.MERGING;
-        holder.btnCancel.setVisibility(canCancel ? View.VISIBLE : View.GONE);
+        btnCancel.setVisibility(canCancel ? View.VISIBLE : View.GONE);
 
-        holder.btnCancel.setOnClickListener(v -> {
+        btnCancel.setOnClickListener(btn -> {
             if (cancelListener != null) {
                 cancelListener.onCancel(task);
             }
@@ -102,54 +115,31 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.ViewHolder> {
         if (task.getStatus() == DownloadTask.Status.DOWNLOADING
                 || task.getStatus() == DownloadTask.Status.MERGING
                 || task.getStatus() == DownloadTask.Status.PARSING) {
-            holder.progressBar.setVisibility(View.VISIBLE);
-            holder.progressText.setVisibility(View.VISIBLE);
-            holder.progressBar.setProgress(task.getProgress());
+            progressBar.setVisibility(View.VISIBLE);
+            progressText.setVisibility(View.VISIBLE);
+            progressBar.setProgress(task.getProgress());
             String pText = task.getProgress() + "%";
             if (!task.getSpeedText().isEmpty()) {
                 pText += " · " + task.getSpeedText();
             }
-            holder.progressText.setText(pText);
+            progressText.setText(pText);
         } else {
-            holder.progressBar.setVisibility(View.GONE);
-            holder.progressText.setVisibility(View.GONE);
+            progressBar.setVisibility(View.GONE);
+            progressText.setVisibility(View.GONE);
         }
 
         if (task.getStatus() == DownloadTask.Status.ERROR && task.getErrorMsg() != null) {
-            holder.errorText.setVisibility(View.VISIBLE);
-            holder.errorText.setText(task.getErrorMsg());
+            errorText.setVisibility(View.VISIBLE);
+            errorText.setText(task.getErrorMsg());
         } else {
-            holder.errorText.setVisibility(View.GONE);
+            errorText.setVisibility(View.GONE);
         }
 
         if (task.getStatus() == DownloadTask.Status.COMPLETED && task.getSavedFilename() != null) {
-            holder.filenameText.setVisibility(View.VISIBLE);
-            holder.filenameText.setText("已保存: " + task.getSavedFilename());
+            filenameText.setVisibility(View.VISIBLE);
+            filenameText.setText("已保存: " + task.getSavedFilename());
         } else {
-            holder.filenameText.setVisibility(View.GONE);
-        }
-    }
-
-    @Override
-    public int getItemCount() {
-        return tasks.size();
-    }
-
-    static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView title, url, status, progressText, errorText, filenameText;
-        ProgressBar progressBar;
-        Button btnCancel;
-
-        ViewHolder(View v) {
-            super(v);
-            title = v.findViewById(R.id.taskTitle);
-            url = v.findViewById(R.id.taskUrl);
-            status = v.findViewById(R.id.taskStatus);
-            progressText = v.findViewById(R.id.taskProgress);
-            progressBar = v.findViewById(R.id.taskProgressBar);
-            errorText = v.findViewById(R.id.taskError);
-            filenameText = v.findViewById(R.id.taskFilename);
-            btnCancel = v.findViewById(R.id.btnCancel);
+            filenameText.setVisibility(View.GONE);
         }
     }
 }
