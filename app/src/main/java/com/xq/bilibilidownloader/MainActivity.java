@@ -80,6 +80,8 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 task.pause();
             }
+            lastRefreshTime = 0;
+            refreshTaskList();
         });
 
         uiCallback = () -> throttledRefresh();
@@ -89,12 +91,20 @@ public class MainActivity extends AppCompatActivity {
         savePathText.setText("保存位置: " + saveDir.getAbsolutePath());
 
         downloadBtn.setOnClickListener(v -> startDownload());
-        clearBtn.setOnClickListener(v -> downloadManager.clearCompleted());
+        clearBtn.setOnClickListener(v -> {
+            downloadManager.clearCompleted();
+            lastRefreshTime = 0;
+            refreshTaskList();
+        });
         cancelAllBtn.setOnClickListener(v -> {
             new AlertDialog.Builder(this)
                     .setTitle("确认取消")
                     .setMessage("确定取消所有下载任务吗？")
-                    .setPositiveButton("确定", (d, w) -> downloadManager.cancelAll())
+                    .setPositiveButton("确定", (d, w) -> {
+                        downloadManager.cancelAll();
+                        lastRefreshTime = 0;
+                        refreshTaskList();
+                    })
                     .setNegativeButton("不取消", null)
                     .show();
         });
@@ -104,6 +114,8 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 downloadManager.resumeAll();
             }
+            lastRefreshTime = 0;
+            refreshTaskList();
         });
 
         if (!checkPermission()) {
