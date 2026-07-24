@@ -1,0 +1,8 @@
+build/
+.gradle/
+local.properties
+*.iml
+.idea/
+*.apk
+*.aab
+gradle/wrapper/gradle-wrapper.jar
