@@ -71,7 +71,7 @@ public class DownloadTask {
             progress = 5;
             notifyUpdate();
 
-            String bvid = BilibiliAPI.extractBvid(url);
+            String bvid = api.resolveBvid(url);
             if (bvid == null) {
                 throw new Exception("无法解析视频链接，请检查URL");
             }
